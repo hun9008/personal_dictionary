@@ -13,7 +13,7 @@ export function ExplorerHeader() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Personal Dictionary</h1>
-            <nav className="grid w-full max-w-sm grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+            <nav className="grid w-full max-w-xl grid-cols-3 gap-1 rounded-lg bg-muted p-1">
               <Link
                 href="/"
                 replace
@@ -35,6 +35,17 @@ export function ExplorerHeader() {
                 }`}
               >
                 문장분석
+              </Link>
+              <Link
+                href="/random-gen"
+                replace
+                className={`rounded-md px-4 py-2 text-center text-sm font-medium transition-colors ${
+                  pathname === "/random-gen"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Random Gen
               </Link>
             </nav>
           </div>
