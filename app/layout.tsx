@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Noto_Sans_KR, Noto_Serif_KR } from 'next/font/google'
+import { VisitTracker } from '@/components/visit-tracker'
 
 import './globals.css'
 
@@ -18,7 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={`${notoSansKR.variable} ${notoSerifKR.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${notoSansKR.variable} ${notoSerifKR.variable} font-sans antialiased`}>
+        <VisitTracker />
+        {children}
+      </body>
     </html>
   )
 }
