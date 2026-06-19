@@ -9,13 +9,22 @@ import { Input } from "@/components/ui/input"
 
 const CHOSUNG_LIST = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ']
 const WORDS_CACHE_KEY = "vocab_words_cache_v1"
+const WORD_META_KEY = "vocab_words_meta_v1"
 const INITIAL_VISIBLE_COUNT = 100
 const VISIBLE_STEP = 100
 
-type FilterMode = 'all' | 'multiMeaning'
+type FilterMode = 'all' | 'multiMeaning' | 'favorites' | 'onomatopoeia'
+
+interface WordMeta {
+  favorite?: boolean
+  onomatopoeia?: boolean
+}
+
+type WordMetaMap = Record<number, WordMeta>
 
 export function WordList() {
   const [words, setWords] = useState<KoreanWord[]>([])
+  const [wordMeta, setWordMeta] = useState<WordMetaMap>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mutationError, setMutationError] = useState<string | null>(null)
@@ -35,6 +44,11 @@ export function WordList() {
     localStorage.setItem(WORDS_CACHE_KEY, JSON.stringify(nextWords))
   }
 
+  const syncWordMeta = (nextMeta: WordMetaMap) => {
+    setWordMeta(nextMeta)
+    localStorage.setItem(WORD_META_KEY, JSON.stringify(nextMeta))
+  }
+
   useEffect(() => {
     let isMounted = true
 
@@ -46,6 +60,11 @@ export function WordList() {
         const navigationEntry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined
         if (navigationEntry?.type === "reload") {
           localStorage.removeItem(WORDS_CACHE_KEY)
+        }
+
+        const storedMeta = localStorage.getItem(WORD_META_KEY)
+        if (storedMeta && isMounted) {
+          setWordMeta(JSON.parse(storedMeta) as WordMetaMap)
         }
 
         const cached = localStorage.getItem(WORDS_CACHE_KEY)
@@ -88,9 +107,25 @@ export function WordList() {
 
   const sortedWords = useMemo(() => sortByKorean(words), [words])
   const multiMeaningWords = useMemo(() => getMultiMeaningWords(sortedWords), [sortedWords])
+  const favoriteWords = useMemo(
+    () => sortedWords.filter((word) => wordMeta[word.id]?.favorite),
+    [sortedWords, wordMeta],
+  )
+  const onomatopoeiaWords = useMemo(
+    () => sortedWords.filter((word) => wordMeta[word.id]?.onomatopoeia),
+    [sortedWords, wordMeta],
+  )
 
   const filteredWords = useMemo(() => {
-    let filtered = filterMode === 'multiMeaning' ? multiMeaningWords : sortedWords
+    let filtered = sortedWords
+
+    if (filterMode === 'multiMeaning') {
+      filtered = multiMeaningWords
+    } else if (filterMode === 'favorites') {
+      filtered = favoriteWords
+    } else if (filterMode === 'onomatopoeia') {
+      filtered = onomatopoeiaWords
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
@@ -101,7 +136,7 @@ export function WordList() {
     }
 
     return filtered
-  }, [filterMode, multiMeaningWords, searchQuery, sortedWords])
+  }, [favoriteWords, filterMode, multiMeaningWords, onomatopoeiaWords, searchQuery, sortedWords])
 
   const groupedAll = useMemo(() => groupByChosung(filteredWords), [filteredWords])
 
@@ -185,12 +220,33 @@ export function WordList() {
         throw new Error(data?.message ?? '단어 삭제 실패')
       }
 
+      const nextMeta = { ...wordMeta }
+      delete nextMeta[word.id]
+      syncWordMeta(nextMeta)
       syncWords(words.filter((w) => w.id !== word.id))
     } catch (e) {
       setMutationError(e instanceof Error ? e.message : '단어 삭제 중 오류가 발생했습니다.')
     } finally {
       setDeletingId(null)
     }
+  }
+
+  const toggleWordMeta = (wordId: number, key: keyof WordMeta) => {
+    const current = wordMeta[wordId] ?? {}
+    const nextValue = !current[key]
+    const nextMeta = {
+      ...wordMeta,
+      [wordId]: {
+        ...current,
+        [key]: nextValue,
+      },
+    }
+
+    if (!nextMeta[wordId].favorite && !nextMeta[wordId].onomatopoeia) {
+      delete nextMeta[wordId]
+    }
+
+    syncWordMeta(nextMeta)
   }
 
   return (
@@ -227,6 +283,26 @@ export function WordList() {
             }`}
           >
             다의어 ({multiMeaningWords.length})
+          </button>
+          <button
+            onClick={() => setFilterMode('favorites')}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              filterMode === 'favorites'
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            즐겨찾기 ({favoriteWords.length})
+          </button>
+          <button
+            onClick={() => setFilterMode('onomatopoeia')}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              filterMode === 'onomatopoeia'
+                ? 'bg-sky-100 text-sky-700'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            의성 의태어 ({onomatopoeiaWords.length})
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -314,6 +390,10 @@ export function WordList() {
                         key={word.id}
                         word={word}
                         onDelete={handleDeleteWord}
+                        onToggleFavorite={(target) => toggleWordMeta(target.id, 'favorite')}
+                        onToggleOnomatopoeia={(target) => toggleWordMeta(target.id, 'onomatopoeia')}
+                        isFavorite={wordMeta[word.id]?.favorite === true}
+                        isOnomatopoeia={wordMeta[word.id]?.onomatopoeia === true}
                         deleting={deletingId === word.id}
                       />
                     ))}

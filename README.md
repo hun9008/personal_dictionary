@@ -13,6 +13,8 @@ The goal is to help writing tasks with faster word lookup, replacement suggestio
   - Browse and search words
   - Filter by Korean initial consonant groups (ㄱ, ㄴ, ㄷ, ...)
   - Highlight and filter polysemous words (marked with `.`)
+  - Mark words as favorites and filter only favorite words
+  - Mark words as onomatopoeia/mimetic words and filter that subset
   - Add and delete words
   - Open Naver Korean Dictionary directly from each word
 - Sentence Analyzer
@@ -92,6 +94,9 @@ API:
   - body: `{ "word": string, "isMultiMeaning": boolean }`
 - `DELETE /api/words/:id` : delete a word
 - `GET /api/random-gen/sentence` : generate a random sentence from Wikipedia-based random walk
+
+Client-side saved state:
+- Favorite / onomatopoeia selections are currently stored in browser `localStorage`.
 
 ## Sentence Analyzer Logic (Current)
 
